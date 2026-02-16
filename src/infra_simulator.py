@@ -1,9 +1,11 @@
 from __future__ import annotations
+from .machine import Machine
+
 
 import json
 from pathlib import Path
 
-from logger import get_logger
+from .logger import get_logger
 
 CONFIG_PATH = Path("configs") / "instances.json"
 ALLOWED_OS = {"ubuntu", "debian", "centos", "rocky", "alpine"}
@@ -60,7 +62,7 @@ def validate_int(raw: str, field: str, min_value: int, max_value: int) -> int:
     return value
 
 
-def prompt_machine(existing: list[dict]) -> dict:
+def prompt_machine(existing: list[dict]) -> Machine:
     while True:
         try:
             name = validate_name(input("VM name: "), existing)
@@ -68,9 +70,9 @@ def prompt_machine(existing: list[dict]) -> dict:
             cpu = validate_int(input("CPU cores (1-64): "), "CPU cores", 1, 64)
             ram = validate_int(input("RAM GB (1-512): "), "RAM GB", 1, 512)
 
-            vm = {"name": name, "os": os_name, "cpu": cpu, "ram_gb": ram}
-            log.info("Created VM definition: %s", vm)
-            return vm
+            m = Machine(name=name, os=os_name, cpu=cpu, ram_gb=ram)
+            m.log_creation()
+            return m
 
         except ValueError as e:
             log.warning("Invalid user input: %s", e)
@@ -89,8 +91,8 @@ def main() -> None:
         return
 
     while True:
-        vm = prompt_machine(instances)
-        instances.append(vm)
+        machine = prompt_machine(instances)
+        instances.append(machine.to_dict())
         save_instances(instances)
 
         again = input("Add another VM? (y/n): ").strip().lower()
