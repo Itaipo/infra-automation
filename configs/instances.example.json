@@ -1,0 +1,50 @@
+[
+  {
+    "name": "testvm1",
+    "os": "centos",
+    "cpu": 8,
+    "ram_gb": 72
+  },
+  {
+    "name": "testvm2",
+    "os": "centos",
+    "cpu": 24,
+    "ram_gb": 32
+  },
+  {
+    "name": "testvm3",
+    "os": "centos",
+    "cpu": 12,
+    "ram_gb": 19
+  },
+  {
+    "name": "testvm4",
+    "os": "centos",
+    "cpu": 64,
+    "ram_gb": 112
+  },
+  {
+    "name": "testvm5",
+    "os": "centos",
+    "cpu": 32,
+    "ram_gb": 152
+  },
+  {
+    "name": "testvm6",
+    "os": "centos",
+    "cpu": 32,
+    "ram_gb": 44
+  },
+  {
+    "name": "vm0.1",
+    "os": "centos",
+    "cpu": 26,
+    "ram_gb": 34
+  },
+  {
+    "name": "vm0.2",
+    "os": "centos",
+    "cpu": 24,
+    "ram_gb": 52
+  }
+]

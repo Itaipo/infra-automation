@@ -9,3 +9,7 @@ venv/
 
 # Logs
 logs/*.log
+configs/instances.json
+
+# Local state
+configs/instances.json
