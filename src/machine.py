@@ -1,37 +1,20 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
+from pydantic import BaseModel, Field
+from typing import Literal
 
 from .logger import get_logger
 
 log = get_logger()
 
+AllowedOS = Literal["ubuntu", "debian", "centos", "rocky", "alpine"]
 
-@dataclass(frozen=True)
-class Machine:
-    name: str
-    os: str
-    cpu: int
-    ram_gb: int
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "name": self.name,
-            "os": self.os,
-            "cpu": self.cpu,
-            "ram_gb": self.ram_gb,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Machine":
-
-        return cls(
-            name=str(data["name"]),
-            os=str(data["os"]),
-            cpu=int(data["cpu"]),
-            ram_gb=int(data["ram_gb"]),
-        )
+class Machine(BaseModel):
+    name: str = Field(min_length=1)
+    os: AllowedOS
+    cpu: int = Field(ge=1, le=64)
+    ram_gb: int = Field(ge=1, le=512)
 
     def log_creation(self) -> None:
         log.info(
@@ -41,3 +24,7 @@ class Machine:
             self.cpu,
             self.ram_gb,
         )
+
+    def to_dict(self) -> dict:
+        
+        return self.model_dump()

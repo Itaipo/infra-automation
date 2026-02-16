@@ -1,5 +1,6 @@
 from __future__ import annotations
 from .machine import Machine
+from pydantic import ValidationError
 
 
 import json
