@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
 from typing import Literal
+
+from pydantic import BaseModel, Field
 
 from .logger import get_logger
 
@@ -16,7 +17,8 @@ class Machine(BaseModel):
     cpu: int = Field(ge=1, le=64)
     ram_gb: int = Field(ge=1, le=512)
 
-    def log_creation(self) -> None:
+    def model_post_init(self, __context) -> None:
+        # Runs after validation & object creation
         log.info(
             "Machine created: name=%s os=%s cpu=%s ram_gb=%s",
             self.name,
@@ -26,5 +28,4 @@ class Machine(BaseModel):
         )
 
     def to_dict(self) -> dict:
-        
         return self.model_dump()

@@ -1,16 +1,14 @@
 from __future__ import annotations
-from .machine import Machine
-from pydantic import ValidationError
-
 
 import json
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from .logger import get_logger
+from .machine import Machine
 
 CONFIG_PATH = Path("configs") / "instances.json"
-ALLOWED_OS = {"ubuntu", "debian", "centos", "rocky", "alpine"}
-
 log = get_logger()
 
 
@@ -45,35 +43,27 @@ def validate_name(name: str, existing: list[dict]) -> str:
     return name
 
 
-def validate_os(os_name: str) -> str:
-    os_name = os_name.strip().lower()
-    if os_name not in ALLOWED_OS:
-        allowed = ", ".join(sorted(ALLOWED_OS))
-        raise ValueError(f"Invalid OS. Allowed: {allowed}")
-    return os_name
-
-
-def validate_int(raw: str, field: str, min_value: int, max_value: int) -> int:
-    raw = raw.strip()
+def input_int(prompt: str, field: str) -> int:
+    raw = input(prompt).strip()
     if not raw.isdigit():
         raise ValueError(f"{field} must be a whole number.")
-    value = int(raw)
-    if value < min_value or value > max_value:
-        raise ValueError(f"{field} must be between {min_value} and {max_value}.")
-    return value
+    return int(raw)
 
 
 def prompt_machine(existing: list[dict]) -> Machine:
     while True:
         try:
             name = validate_name(input("VM name: "), existing)
-            os_name = validate_os(input(f"OS ({', '.join(sorted(ALLOWED_OS))}): "))
-            cpu = validate_int(input("CPU cores (1-64): "), "CPU cores", 1, 64)
-            ram = validate_int(input("RAM GB (1-512): "), "RAM GB", 1, 512)
+            os_name = input("OS (ubuntu/debian/centos/rocky/alpine): ").strip().lower()
+            cpu = input_int("CPU cores (1-64): ", "CPU cores")
+            ram = input_int("RAM GB (1-512): ", "RAM GB")
 
-            m = Machine(name=name, os=os_name, cpu=cpu, ram_gb=ram)
-            m.log_creation()
-            return m
+            return Machine(name=name, os=os_name, cpu=cpu, ram_gb=ram)
+
+        except ValidationError as e:
+            log.warning("Validation error while creating Machine (fields: %s)", list(e.errors()))
+            print(f"❌ Validation error:\n{e}\nTry again.\n")
+
 
         except ValueError as e:
             log.warning("Invalid user input: %s", e)
