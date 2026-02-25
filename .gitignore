@@ -13,3 +13,10 @@ configs/instances.json
 
 # Local state
 configs/instances.json
+
+# virtual environments
+.venv/
+.venv-wsl/
+venv/
+__pycache__/
+*.pyc

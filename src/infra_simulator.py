@@ -1,98 +1,103 @@
-from __future__ import annotations
-
 import json
+import platform
+import subprocess
 from pathlib import Path
-
+from enum import Enum
 from pydantic import ValidationError
-
 from .logger import get_logger
 from .machine import Machine
 
 CONFIG_PATH = Path("configs") / "instances.json"
 log = get_logger()
 
+class OSName(str, Enum):
+    UBUNTU = "ubuntu"
+    DEBIAN = "debian"
+    CENTOS = "centos"
+    
 
 def load_instances() -> list[dict]:
     if not CONFIG_PATH.exists():
-        log.info("No instances.json found. Starting with empty inventory.")
         return []
-
     try:
-        data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as e:
-        raise RuntimeError("configs/instances.json is corrupted (invalid JSON).") from e
-
-    if not isinstance(data, list):
-        raise RuntimeError("configs/instances.json must contain a JSON list.")
-
-    return data
-
+        return json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, Exception) as e:
+        log.error("Failed to load instances: %s", e)
+        return []
 
 def save_instances(instances: list[dict]) -> None:
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    CONFIG_PATH.write_text(json.dumps(instances, indent=2), encoding="utf-8")
-    log.info("Saved %d instance(s) to %s", len(instances), CONFIG_PATH)
-
-
-def validate_name(name: str, existing: list[dict]) -> str:
-    name = name.strip()
-    if not name:
-        raise ValueError("VM name cannot be empty.")
-    if any(vm.get("name") == name for vm in existing):
-        raise ValueError("A VM with this name already exists.")
-    return name
-
-
-def input_int(prompt: str, field: str) -> int:
-    raw = input(prompt).strip()
-    if not raw.isdigit():
-        raise ValueError(f"{field} must be a whole number.")
-    return int(raw)
-
+    with CONFIG_PATH.open('w', encoding='utf-8') as f:
+        json.dump(instances, f, indent=2)
 
 def prompt_machine(existing: list[dict]) -> Machine:
+    """Prompt user with robust error handling for non-integer inputs."""
     while True:
         try:
-            name = validate_name(input("VM name: "), existing)
-            os_name = input("OS (ubuntu/debian/centos/rocky/alpine): ").strip().lower()
-            cpu = input_int("CPU cores (1-64): ", "CPU cores")
-            ram = input_int("RAM GB (1-512): ", "RAM GB")
+            name = input("VM name: ").strip()
+            if any(vm.get("name") == name for vm in existing):
+                print(f"❌ VM '{name}' already exists. Choose another.")
+                continue
+                
+            os_input = input("OS (ubuntu/debian/centos/rocky/alpine): ").strip().lower()
+            cpu_input = input("CPU cores (1-64): ").strip()
+            ram_input = input("RAM GB (1-512): ").strip()
 
-            return Machine(name=name, os=os_name, cpu=cpu, ram_gb=ram)
+            if not cpu_input.isdigit() or not ram_input.isdigit():
+                print("❌ CPU and RAM must be valid numbers.")
+                continue
+
+            return Machine(name=name, os=os_input, cpu=int(cpu_input), ram_gb=int(ram_input))
 
         except ValidationError as e:
-            log.warning("Validation error while creating Machine (fields: %s)", list(e.errors()))
-            print(f"❌ Validation error:\n{e}\nTry again.\n")
+            print(f"❌ Validation Error: {e.json()}")
+        except Exception as e:
+            print(f"❌ Unexpected error: {e}")
 
-
-        except ValueError as e:
-            log.warning("Invalid user input: %s", e)
-            print(f"❌ {e}\nTry again.\n")
-
-
-def main() -> None:
-    log.info("Provisioning run started")
-    print("=== Infra Automation (Mock Provisioning) ===")
-
-    try:
-        instances = load_instances()
-    except RuntimeError as e:
-        log.exception("Failed to load instances")
-        print(f"❌ {e}")
+def run_nginx_install() -> None:
+    if platform.system().lower() != "linux":
+        log.info("Non-linux system detected. Skipping actual bash execution.")
         return
 
-    while True:
-        machine = prompt_machine(instances)
-        instances.append(machine.to_dict())
-        save_instances(instances)
+    script_path = Path("scripts") / "install_nginx.sh"
+    if not script_path.exists():
+        log.error(f"Script missing: {script_path}")
+        return
 
-        again = input("Add another VM? (y/n): ").strip().lower()
-        if again != "y":
+    
+    script_path.chmod(script_path.stat().st_mode | 0o111)
+
+    log.info("Executing service installation...")
+    try:
+        
+        result = subprocess.run(
+            ["sudo", "bash", str(script_path)],
+            capture_output=True, text=True, check=True
+        )
+        log.info("Success: %s", result.stdout)
+    except subprocess.CalledProcessError as e:
+        log.error("Script failed! Error: %s", e.stderr)
+        raise RuntimeError(f"Bash script failed: {e.stderr}")
+
+def main():
+    log.info("Starting automation tool")
+    instances = load_instances()
+
+    while True:
+        new_vm = prompt_machine(instances)
+        instances.append(new_vm.to_dict())
+        save_instances(instances)
+        
+        if input("Add another? (y/n): ").lower() != 'y':
             break
 
-    log.info("Provisioning run finished successfully")
-    print(f"✅ Saved {len(instances)} VM(s) to {CONFIG_PATH}")
-
+    try:
+        run_nginx_install()
+        print("✅ Process completed successfully. Check logs/provisioning.log")
+    except Exception as e:
+        print(f"🔥 Error during installation: {e}")
 
 if __name__ == "__main__":
     main()
+
+    
