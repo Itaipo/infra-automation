@@ -1,7 +1,12 @@
+# ========================
 # Python
+# ========================
 __pycache__/
 *.pyc
+
+# Virtual Environments
 .venv/
+.venv-wsl/
 venv/
 
 # VS Code
@@ -9,14 +14,6 @@ venv/
 
 # Logs
 logs/*.log
-configs/instances.json
 
-# Local state
+# Local state / runtime files
 configs/instances.json
-
-# virtual environments
-.venv/
-.venv-wsl/
-venv/
-__pycache__/
-*.pyc

@@ -20,6 +20,28 @@ class OSName(str, Enum):
     WINDOWS = "windows"
 
 
+
+def to_wsl_path(path: Path) -> str:
+    resolved = path.resolve()
+    drive = resolved.drive.rstrip(":").lower()
+    rest = resolved.as_posix().split(":/", 1)[1]
+    return f"/mnt/{drive}/{rest}"
+
+
+
+def run_provisioning_script() -> None:
+    script_path = Path("scripts") / "install_nginx.sh"
+    wsl_script_path = to_wsl_path(script_path)
+
+    log.info("Starting provisioning script: %s", wsl_script_path)
+
+    try:
+        subprocess.run(["bash", wsl_script_path], check=True)
+        log.info("Provisioning script finished successfully.")
+    except subprocess.CalledProcessError as e:
+        log.error("Provisioning script failed: %s", e)
+
+
 def load_instances() -> list[dict]:
     if not CONFIG_PATH.exists():
         return []
@@ -97,3 +119,11 @@ def prompt_machine(existing: list[dict]) -> Machine:
     except ValidationError as e:
         print(f"❌ Validation Error: {e}")
         raise
+
+if __name__ == "__main__":
+        instances = load_instances()
+        machine = prompt_machine(instances)
+        instances.append(machine.to_dict())
+        save_instances(instances)
+        run_provisioning_script()
+        print(f"✅ Machine '{machine.name}' saved successfully.")
